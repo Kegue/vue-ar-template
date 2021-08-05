@@ -1,0 +1,27 @@
+{
+  "cwd": "/home/henriquevinagre/link/work_pls",
+  "type": [
+    "web",
+    "capacitor"
+  ],
+  "name": "My App",
+  "framework": "vue",
+  "template": "single-view",
+  "bundler": "vite",
+  "cssPreProcessor": "scss",
+  "theming": {
+    "customColor": true,
+    "color": "#ffd400",
+    "darkTheme": true,
+    "iconFonts": true,
+    "fillBars": false
+  },
+  "customBuild": false,
+  "pkg": "io.framework7.myapp",
+  "capacitor": {
+    "platforms": [
+      "ios",
+      "android"
+    ]
+  }
+}
