@@ -1,7 +1,5 @@
 <template>
-    <div id="canvas">
-
-    </div>
+  <div id="container"></div>
 </template>
 
 <script>
@@ -9,6 +7,13 @@
   var arToolkitSource, arToolkitContext;
   var markerRoot1, markerRoot2;
   var mesh1;
+  var maquina = {
+    titulo: "Impressora 001",
+    atributos:[
+      { tipo: "percentagem", nome: "Tinta Preta", valor: 53 },
+      { tipo: "absoluto", nome: "Papel", valor: 13, maximo: 50 }
+    ]
+  }
 
   export default {
     data() {
@@ -16,7 +21,7 @@
       }
     },
     methods: {
-      initialize: function(){
+      initialize: async function(){
 
         scene = new THREE.Scene();
 
@@ -35,38 +40,12 @@
         renderer.domElement.style.position = 'absolute'
         renderer.domElement.style.top = '0px'
         renderer.domElement.style.left = '0px'
+        renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild( renderer.domElement );
 
         clock = new THREE.Clock();
         deltaTime = 0;
         totalTime = 0;
-        
-        ////////////////////////////////////////////////////////////
-        // setup arToolkitSource
-        ////////////////////////////////////////////////////////////
-
-        arToolkitSource = new THREEx.ArToolkitSource({
-          sourceType : 'webcam',
-        });
-
-        function onResize()
-        {
-          arToolkitSource.onResizeElement()
-          arToolkitSource.copyElementSizeTo(renderer.domElement)	
-          if ( arToolkitContext.arController !== null )
-          {
-            arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas)	
-          }	
-        }
-
-        arToolkitSource.init(() => {
-          onResize();
-        });
-        
-        // handle resize event
-        window.addEventListener('resize', () => {
-          onResize()
-        });
         
         ////////////////////////////////////////////////////////////
         // setup arToolkitContext
@@ -87,6 +66,35 @@
         });
 
         ////////////////////////////////////////////////////////////
+        // setup arToolkitSource
+        ////////////////////////////////////////////////////////////
+
+        arToolkitSource = new THREEx.ArToolkitSource({
+          sourceType : 'webcam',
+        });
+
+        function onResize()
+        {
+          arToolkitSource.onResizeElement()
+          arToolkitSource.copyElementSizeTo(renderer.domElement)	
+          console.log("need ar controller")
+          if ( arToolkitContext.arController !== null )
+          {
+            arToolkitSource.copyElementSizeTo(arToolkitContext.arController.canvas)	
+          }	
+        }
+
+        arToolkitSource.init(() => {
+          onResize();
+        });
+        
+        // handle resize event
+        window.addEventListener('resize', () => {
+          onResize()
+        });
+        
+
+        ////////////////////////////////////////////////////////////
         // setup markerRoots
         ////////////////////////////////////////////////////////////
 
@@ -97,17 +105,21 @@
           type: 'pattern', patternUrl: "data/hiro.patt",
         })
 
-        let geometry1	= new THREE.CubeGeometry(1,1,1);
-        let material1	= new THREE.MeshNormalMaterial({
-          transparent: true,
-          opacity: 0.5,
-          side: THREE.DoubleSide
-        }); 
+        // let geometry1	= new THREE.CubeGeometry(1,1,1);
+        // let material1	= new THREE.MeshNormalMaterial({
+        //   transparent: true,
+        //   opacity: 0.5,
+        //   side: THREE.DoubleSide
+        // }); 
         
-        mesh1 = new THREE.Mesh( geometry1, material1 );
-        mesh1.position.y = 0.5;
+        // mesh1 = new THREE.Mesh( geometry1, material1 );
+        // mesh1.position.y = 0.5;
+
+        let sprite = spriteDeMaquina(maquina);
+
+        sprite.position.y = 1;
         
-        markerRoot1.add( mesh1 );
+        markerRoot1.add( sprite );
       },
 
       update: function(){
@@ -133,18 +145,69 @@
       this.animate();
     }
   }
-</script>
+  function spriteDeMaquina (maquina){
+    var fontface = "Arial";
+    var fontsize = 18;
+    var borderThickness =  4;
+    var backgroundColor = { r:255, g:255, b:255, a:0.8 };
+    var borderColor = { r:0, g:0, b:0, a:0.8 };
+    var textColor = { r:0, g:0, b:0, a:1.0 };
 
-<style>
-  #canvas {
-    background-color: #000;
-    width: 200px;
-    height: 200px;
-    border: 1px solid black;
-    margin: 100px;
-    padding: 0px;
-    position: static; /* fixed or static */
-    top: 100px;
-    left: 100px;
+    var message = maquina.titulo;
+
+    var canvas = document.createElement('canvas');
+    var context = canvas.getContext('2d');
+    context.font = "Bold " + fontsize + "px " + fontface;
+    var metrics = context.measureText( message );
+    var textWidth = metrics.width;
+
+    context.fillStyle   = "rgba(" + backgroundColor.r + "," + backgroundColor.g + "," + backgroundColor.b + "," + backgroundColor.a + ")";
+    context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + "," + borderColor.b + "," + borderColor.a + ")";
+
+    context.lineWidth = borderThickness;
+    roundRect(context, canvas.width/2 - textWidth/2 - borderThickness, 0, textWidth + borderThickness, fontsize + borderThickness * 3, 8);
+
+    context.textAlign = "center";
+    context.fillStyle = "rgba("+textColor.r+", "+textColor.g+", "+textColor.b+", 1.0)";
+    context.fillText( message, canvas.width/2, fontsize + borderThickness);
+
+    for(var i = 0; i < maquina.atributos.length; i++){
+      var atributo = maquina.atributos[i];
+      var text = atributo.nome + ": " + atributo.valor;
+
+      switch(atributo.tipo){
+        case "percentagem":
+          text += "%";
+          break;
+        case "absoluto":
+          text += " de " + atributo.maximo;
+      }
+
+      context.fillText( text, canvas.width/2, (fontsize + borderThickness) * (i+2));
+    }
+
+    var texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+
+    var spriteMaterial = new THREE.SpriteMaterial( { map: texture, useScreenCoordinates: false, depthTest: false } );
+    var sprite = new THREE.Sprite( spriteMaterial );
+    sprite.scale.set(0.01 * canvas.width, 0.01 * canvas.height);
+    return sprite;  
   }
-</style>
+
+  function roundRect(ctx, x, y, w, h, r) { 
+    ctx.beginPath(); 
+    ctx.moveTo(x + r, y); 
+    ctx.lineTo(x + w - r, y); 
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r); 
+    ctx.lineTo(x + w, y + h - r); 
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h); 
+    ctx.lineTo(x + r, y + h); 
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r); 
+    ctx.lineTo(x, y + r); 
+    ctx.quadraticCurveTo(x, y, x + r, y); 
+    ctx.closePath(); 
+    ctx.fill(); 
+    ctx.stroke(); 
+  }
+</script>
