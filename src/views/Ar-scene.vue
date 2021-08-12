@@ -10,17 +10,33 @@
 
 
 <script>
-  var scene, camera, renderer, clock, deltaTime, totalTime;
-  var arToolkitSource, arToolkitContext;
-  var markerRoot1;
+  import { f7 } from 'framework7-vue';
 
-  var maquina = {
-    titulo: "Impressora 001",
-    atributos:[
-      { tipo: "percentagem", nome: "Tinta Preta", valor: 53 },
-      { tipo: "absoluto", nome: "Papel", valor: 13, maximo: 50 }
-    ]
-  }
+  var scene, camera, renderer, clock, deltaTime, totalTime, sheet;
+  var arToolkitSource, arToolkitContext;
+  var markerRoots = [];
+
+  var maquinas = [
+    {
+      markerPath: "assets/data/hiro.patt",
+      titulo: "Impressora 001",
+      atributos:[
+        { tipo: "percentagem", nome: "Tinta Preta", valor: 53 },
+        { tipo: "percentagem", nome: "Tinta Vermelha", valor: 46 },
+        { tipo: "percentagem", nome: "Tinta Azul", valor: 97 },
+        { tipo: "percentagem", nome: "Tinta Amarela", valor: 68 },
+        { tipo: "absoluto", nome: "Papel", valor: 13, maximo: 50 }
+      ]
+    },
+    {
+      markerPath: "assets/data/kanji.patt",
+      titulo: "Fax 001",
+      atributos:[
+        { tipo: "percentagem", nome: "Tinta Preta", valor: 32 },
+        { tipo: "absoluto", nome: "Papel", valor: 45, maximo: 50 }
+      ]
+    }
+  ]
 
   export default {
     data() {
@@ -81,9 +97,6 @@
 	        sourceHeight: 480,  
         });
 
-        const video = document.getElementById("video");
-        console.log(video);
-
         function onResize()
         {
           arToolkitSource.onResizeElement()
@@ -96,6 +109,12 @@
 
         arToolkitSource.init(() => {
           onResize();
+          // arToolkitContext.arController.addEventListener('getMarker', function (ev) {
+          //   if(ev.data.marker.area > 500){
+          //     console.log(ev);
+          //     openSheet();
+          //   }
+          // });
         });
         
         // handle resize event
@@ -108,34 +127,32 @@
         // setup markerRoots
         ////////////////////////////////////////////////////////////
 
-        // build markerControls
-        markerRoot1 = new THREE.Group();
-        scene.add(markerRoot1);
-        let markerControls1 = new THREEx.ArMarkerControls(arToolkitContext, markerRoot1, {
-          type: 'pattern', patternUrl: "assets/data/hiro.patt",
-        })
+        for(let maquina in maquinas){
 
-        // let geometry1	= new THREE.CubeGeometry(1,1,1);
-        // let material1	= new THREE.MeshNormalMaterial({
-        //   transparent: true,
-        //   opacity: 0.5,
-        //   side: THREE.DoubleSide
-        // }); 
-        
-        // mesh1 = new THREE.Mesh( geometry1, material1 );
-        // mesh1.position.y = 0.5;
+          let markerRoot = new THREE.Group();
+          scene.add(markerRoot);
 
-        let sprite = spriteDeMaquina(maquina);
+          let markerControls = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
+            type: 'pattern', patternUrl: maquina.markerPath,
+          })
+          
+          maquina.sprite = spriteDeMaquina(maquina, { r:0, g:0, b:0, a:0.8 });
+          maquina.sprite.position.y = 1;
+          markerRoot.add(maquina.sprite);
 
-        sprite.position.y = 1;
-        
-        markerRoot1.add( sprite );
+          markerRoots.push(markerRoot);
+        }
       },
 
       update: function(){
         // update artoolkit on every frame
         if ( arToolkitSource.ready !== false )
           arToolkitContext.update( arToolkitSource.domElement );
+
+        for(let i = 0; i < markerRoots.length; i++){
+          if(markerRoot[i].visible)
+            openSheet(maquinas[i]);
+        }
       },
 
       render: function(){
@@ -148,19 +165,49 @@
         totalTime += deltaTime;
         this.update();
         this.render();
-      }
+      },
     },
     mounted() {
       this.initialize();
       this.animate();
     }
   }
-  function spriteDeMaquina (maquina){
+
+  function openSheet(maquina){
+    // Create sheet modal
+        if (!sheet) {
+          sheet = f7.sheet.create({
+            content: `
+              <div class="sheet-modal">
+                <div class="toolbar">
+                  <div class="toolbar-inner justify-content-flex-end">
+                    <a href="#" class="link sheet-close">Close</a>
+                  </div>
+                </div>
+                <div class="sheet-modal-inner">
+                  <div class="page-content">
+                    <div class="block">
+                      <p>Foi detetado ${maquina.titulo}, deseja ser assistido pelo assistente virtual?<p>
+                      <a href="/chat/">Sim</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `.trim(),
+          });
+          // Open it
+          sheet.open();
+        } else{
+          sheet.destroy();
+        }
+  }
+
+  function spriteDeMaquina (maquina, border){
     var fontface = "Arial";
     var fontsize = 18;
     var borderThickness =  4;
     var backgroundColor = { r:255, g:255, b:255, a:0.8 };
-    var borderColor = { r:0, g:0, b:0, a:0.8 };
+    var borderColor = border;
     var textColor = { r:0, g:0, b:0, a:1.0 };
 
     var message = maquina.titulo;
@@ -175,7 +222,27 @@
     context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + "," + borderColor.b + "," + borderColor.a + ")";
 
     context.lineWidth = borderThickness;
-    roundRect(context, canvas.width/2 - textWidth/2 - borderThickness, 0, textWidth + borderThickness, fontsize + borderThickness * 3, 8);
+    roundRect(context, canvas.width/2 - textWidth/2 - borderThickness, 0, textWidth + borderThickness * 2, fontsize + borderThickness * 3, 8);
+
+    let maxWidth = 0;
+
+    for(var i = 0; i < maquina.atributos.length; i++){
+      var atributo = maquina.atributos[i];
+      var text = atributo.nome + ": " + atributo.valor;
+
+      switch(atributo.tipo){
+        case "percentagem":
+          text += "%";
+          break;
+        case "absoluto":
+          text += " de " + atributo.maximo;
+      }
+
+      let thisWidth = context.measureText( text ).width;
+      maxWidth = thisWidth > maxWidth ? thisWidth : maxWidth;
+    }
+
+    roundRect(context, canvas.width/2 - maxWidth/2 - borderThickness, fontsize + borderThickness * 3, maxWidth + borderThickness * 2, (fontsize + borderThickness * 3) * maquina.atributos.length, 8);
 
     context.textAlign = "center";
     context.fillStyle = "rgba("+textColor.r+", "+textColor.g+", "+textColor.b+", 1.0)";
@@ -193,7 +260,7 @@
           text += " de " + atributo.maximo;
       }
 
-      context.fillText( text, canvas.width/2, (fontsize + borderThickness) * (i+2));
+      context.fillText( text, canvas.width/2, (fontsize + borderThickness*2) * (i+2));
     }
 
     var texture = new THREE.Texture(canvas);
