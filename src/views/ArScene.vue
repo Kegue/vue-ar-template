@@ -1,6 +1,9 @@
 <template>
-  <f7-page name="AR-Scene">
-    <f7-navbar title="AR" back-link="Back"></f7-navbar>
+  <f7-page name="ArScene">
+    <f7-navbar title="AR" back-link="Back">
+      <p v-if="seenMachine !== 'Sem Máquina Detetada'" class="right">Máquina detetada: {{seenMachine}}</p>
+      <a class="right" @click="callAssistant">Falar com o assistente</a>
+    </f7-navbar>
     <div id="m-container">
       <video id="video"></video>
       <div id="ar-renderer"></div>
@@ -19,7 +22,7 @@
   var maquinas = [
     {
       markerPath: "assets/data/hiro.patt",
-      titulo: "Impressora 001",
+      nome: "Impressora",
       atributos:[
         { tipo: "percentagem", nome: "Tinta Preta", valor: 53 },
         { tipo: "percentagem", nome: "Tinta Vermelha", valor: 46 },
@@ -30,7 +33,7 @@
     },
     {
       markerPath: "assets/data/kanji.patt",
-      titulo: "Fax 001",
+      nome: "Fax",
       atributos:[
         { tipo: "percentagem", nome: "Tinta Preta", valor: 32 },
         { tipo: "absoluto", nome: "Papel", valor: 45, maximo: 50 }
@@ -41,7 +44,11 @@
   export default {
     data() {
       return{
+        seenMachine: "Sem Máquina Detetada",
       }
+    },
+    props: {
+      f7router: Object,
     },
     methods: {
       initialize: function(){
@@ -127,7 +134,8 @@
         // setup markerRoots
         ////////////////////////////////////////////////////////////
 
-        for(let maquina in maquinas){
+        for(let i = 0; i < maquinas.length; i++){
+          let maquina = maquinas[i];
 
           let markerRoot = new THREE.Group();
           scene.add(markerRoot);
@@ -135,9 +143,9 @@
           let markerControls = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
             type: 'pattern', patternUrl: maquina.markerPath,
           })
-          
+
           maquina.sprite = spriteDeMaquina(maquina, { r:0, g:0, b:0, a:0.8 });
-          maquina.sprite.position.y = 1;
+          maquina.sprite.position.y = 0.5;
           markerRoot.add(maquina.sprite);
 
           markerRoots.push(markerRoot);
@@ -150,8 +158,8 @@
           arToolkitContext.update( arToolkitSource.domElement );
 
         for(let i = 0; i < markerRoots.length; i++){
-          if(markerRoot[i].visible)
-            openSheet(maquinas[i]);
+          if(markerRoots[i].visible)
+            this.seenMachine = maquinas[i].nome;
         }
       },
 
@@ -166,40 +174,15 @@
         this.update();
         this.render();
       },
+
+      callAssistant: function(){
+        this.f7router.navigate(`/chat/${this.seenMachine}`);
+      }
     },
     mounted() {
       this.initialize();
       this.animate();
     }
-  }
-
-  function openSheet(maquina){
-    // Create sheet modal
-        if (!sheet) {
-          sheet = f7.sheet.create({
-            content: `
-              <div class="sheet-modal">
-                <div class="toolbar">
-                  <div class="toolbar-inner justify-content-flex-end">
-                    <a href="#" class="link sheet-close">Close</a>
-                  </div>
-                </div>
-                <div class="sheet-modal-inner">
-                  <div class="page-content">
-                    <div class="block">
-                      <p>Foi detetado ${maquina.titulo}, deseja ser assistido pelo assistente virtual?<p>
-                      <a href="/chat/">Sim</a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            `.trim(),
-          });
-          // Open it
-          sheet.open();
-        } else{
-          sheet.destroy();
-        }
   }
 
   function spriteDeMaquina (maquina, border){
@@ -210,9 +193,12 @@
     var borderColor = border;
     var textColor = { r:0, g:0, b:0, a:1.0 };
 
-    var message = maquina.titulo;
+    var message = maquina.nome;
 
     var canvas = document.createElement('canvas');
+    canvas.height = 256;
+    canvas.width = 256;
+
     var context = canvas.getContext('2d');
     context.font = "Bold " + fontsize + "px " + fontface;
     var metrics = context.measureText( message );
@@ -269,6 +255,7 @@
     var spriteMaterial = new THREE.SpriteMaterial( { map: texture, depthTest: false } );
     var sprite = new THREE.Sprite( spriteMaterial );
     sprite.scale.set(0.01 * canvas.width, 0.01 * canvas.height);
+
     return sprite;  
   }
 
