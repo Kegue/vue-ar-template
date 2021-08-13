@@ -125,6 +125,14 @@ var capacitorApp = {
   
       // Handle Keyboard
       capacitorApp.handleKeyboard();
+
+      // const capacitorPluginPermissions = require("capacitor-plugin-permissions");
+
+      // console.log("Class: ", capacitorPluginPermissions);
+
+      // window.Capacitor.Plugins.Permissions.query({ name: 'camera' }).then((hasPermission) => {
+      //   console.log("Permissions: ", hasPermission);
+      // });
     },
   };
   
