@@ -1,7 +1,9 @@
 <template>
   <f7-page name="ArScene">
     <f7-navbar title="AR" back-link="Back">
-      <p v-if="seenMachine !== 'Sem Máquina Detetada'" class="right">Máquina detetada: {{seenMachine}}</p>
+      <p id="machineIdentifier" v-if="seenMachine !== 'null'" class="right">
+        Máquina detetada:<br>{{seenMachine}}
+      </p>
       <a class="right" @click="callAssistant">Falar com o assistente</a>
     </f7-navbar>
     <div id="m-container">
@@ -19,7 +21,7 @@
   var arToolkitSource, arToolkitContext;
   var markerRoots = [];
 
-  var maquinas = [
+  var machines = [
     {
       markerPath: "assets/data/hiro.patt",
       nome: "Impressora",
@@ -44,7 +46,7 @@
   export default {
     data() {
       return{
-        seenMachine: "Sem Máquina Detetada",
+        seenMachine: "null",
       }
     },
     props: {
@@ -134,19 +136,18 @@
         // setup markerRoots
         ////////////////////////////////////////////////////////////
 
-        for(let i = 0; i < maquinas.length; i++){
-          let maquina = maquinas[i];
+        for(let i = 0; i < machines.length; i++){
+          let machine = machines[i];
 
           let markerRoot = new THREE.Group();
           scene.add(markerRoot);
 
           let markerControls = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
-            type: 'pattern', patternUrl: maquina.markerPath,
+            type: 'pattern', patternUrl: machine.markerPath,
           })
 
-          maquina.sprite = spriteDeMaquina(maquina, { r:0, g:0, b:0, a:0.8 });
-          maquina.sprite.position.y = 0.5;
-          markerRoot.add(maquina.sprite);
+          machine.sprite = spriteDemachine(machine, { r:0, g:0, b:0, a:0.8 });
+          markerRoot.add(machine.sprite);
 
           markerRoots.push(markerRoot);
         }
@@ -158,8 +159,10 @@
           arToolkitContext.update( arToolkitSource.domElement );
 
         for(let i = 0; i < markerRoots.length; i++){
-          if(markerRoots[i].visible)
-            this.seenMachine = maquinas[i].nome;
+          if(markerRoots[i].visible){
+            this.seenMachine = machines[i].nome;
+            machines[i].sprite.position.y = 0.5 - Math.sin(totalTime*4)/10;
+          }
         }
       },
 
@@ -180,20 +183,21 @@
       }
     },
     mounted() {
+      markerRoots = [];
       this.initialize();
       this.animate();
     }
   }
 
-  function spriteDeMaquina (maquina, border){
-    var fontface = "Arial";
+  function spriteDemachine (machine, border){
+    var fontface = "Sans-Serif";
     var fontsize = 18;
     var borderThickness =  4;
-    var backgroundColor = { r:255, g:255, b:255, a:0.8 };
+    var backgroundColor = { r:1, g:96, b:114, a:0.4 };
     var borderColor = border;
     var textColor = { r:0, g:0, b:0, a:1.0 };
 
-    var message = maquina.nome;
+    var message = machine.nome;
 
     var canvas = document.createElement('canvas');
     canvas.height = 256;
@@ -208,12 +212,12 @@
     context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + "," + borderColor.b + "," + borderColor.a + ")";
 
     context.lineWidth = borderThickness;
-    roundRect(context, canvas.width/2 - textWidth/2 - borderThickness, 0, textWidth + borderThickness * 2, fontsize + borderThickness * 3, 8);
+    rect(context, canvas.width/2 - textWidth/2 - borderThickness, 0, textWidth + borderThickness * 2, fontsize + borderThickness * 3, 8);
 
     let maxWidth = 0;
 
-    for(var i = 0; i < maquina.atributos.length; i++){
-      var atributo = maquina.atributos[i];
+    for(var i = 0; i < machine.atributos.length; i++){
+      var atributo = machine.atributos[i];
       var text = atributo.nome + ": " + atributo.valor;
 
       switch(atributo.tipo){
@@ -228,14 +232,14 @@
       maxWidth = thisWidth > maxWidth ? thisWidth : maxWidth;
     }
 
-    roundRect(context, canvas.width/2 - maxWidth/2 - borderThickness, fontsize + borderThickness * 3, maxWidth + borderThickness * 2, (fontsize + borderThickness * 3) * maquina.atributos.length, 8);
+    rect(context, canvas.width/2 - maxWidth/2 - borderThickness, fontsize + borderThickness * 3, maxWidth + borderThickness * 2, (fontsize + borderThickness * 3) * machine.atributos.length, 8);
 
     context.textAlign = "center";
     context.fillStyle = "rgba("+textColor.r+", "+textColor.g+", "+textColor.b+", 1.0)";
     context.fillText( message, canvas.width/2, fontsize + borderThickness);
 
-    for(var i = 0; i < maquina.atributos.length; i++){
-      var atributo = maquina.atributos[i];
+    for(var i = 0; i < machine.atributos.length; i++){
+      var atributo = machine.atributos[i];
       var text = atributo.nome + ": " + atributo.valor;
 
       switch(atributo.tipo){
@@ -272,7 +276,19 @@
     ctx.quadraticCurveTo(x, y, x + r, y); 
     ctx.closePath();
     ctx.fill(); 
-    ctx.stroke(); 
+    // ctx.stroke(); 
+  }
+
+  function rect(ctx, x, y, w, h) { 
+    ctx.beginPath(); 
+    ctx.moveTo(x, y); 
+    ctx.lineTo(x + w, y); 
+    ctx.lineTo(x + w, y + h); 
+    ctx.lineTo(x, y + h); 
+    ctx.lineTo(x, y); 
+    ctx.closePath();
+    ctx.fill(); 
+    // ctx.stroke(); 
   }
 </script>
 
@@ -291,5 +307,8 @@
     position: absolute;
     top: 0;
     left: 0;
+  }
+  #machineIdentifier{
+    text-align: center;
   }
 </style>

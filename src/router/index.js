@@ -14,8 +14,9 @@ const routes = [
     component: ARScene
   },
   {
-    path: '/chat/:maquina',
+    path: '/chat/:machine',
     component: Chat
+    //pass machine as "null" (string) if no machine has been identified
   },
   {
     path: '(.*)',
